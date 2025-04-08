@@ -1,11 +1,20 @@
+// components/SignupForm.tsx
 "use client";
 
 import React from "react";
+import { UseFormReturn } from "react-hook-form";
+import { z } from "zod";
+import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -13,202 +22,249 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { YearMonthPicker } from "./year-month-picker";
+
+const formSchema = z.object({
+    first_name: z.string().min(2),
+    last_name: z.string().min(2),
+    email: z.string().email(),
+    password: z.string().min(8),
+    confirm_password: z.string().min(8),
+    phone: z.string().min(10),
+    dob: z.date(),
+    gender: z.string(),
+    address: z.string().min(5),
+    role: z.string(),
+}).refine(data => data.password === data.confirm_password, {
+    message: "Passwords do not match.",
+    path: ["confirm_password"],
+});
+
+type SignupFormValues = z.infer<typeof formSchema>;
 
 interface SignupFormProps {
-    first_name: string;
-    last_name: string;
-    email: string;
-    password: string;
-    confirm_password: string;
-    phone: string;
-    dob: string;
-    gender: string;
-    address: string;
-    role: string;
-}
-
-interface SignupFormPropsWithHandlers {
-    handleSubmit: (e: React.FormEvent) => Promise<void>;
-    isLoading: boolean;
-    formData: SignupFormProps;
-    handleChange: (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-    ) => void;
-    handleSelectChange: (name: string, value: string) => void;
-    handleDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    form: UseFormReturn<SignupFormValues>;
+    calendarDisplayDate: Date;
+    handleYearChange: (year: string) => void;
+    handleMonthChange: (month: string) => void;
+    setCalendarDisplayDate: (date: Date) => void;
 }
 
 export default function SignupForm({
-    handleSubmit,
-    isLoading,
-    formData,
-    handleChange,
-    handleSelectChange,
-    handleDateChange,
-}: SignupFormPropsWithHandlers) {
+    form,
+    calendarDisplayDate,
+    handleYearChange,
+    handleMonthChange,
+    setCalendarDisplayDate,
+}: SignupFormProps) {
+    const { control } = form;
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="first_name">First name</Label>
-                    <Input
-                        id="first_name"
-                        name="first_name"
-                        placeholder="John"
-                        value={formData.first_name}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="last_name">Last name</Label>
-                    <Input
-                        id="last_name"
-                        name="last_name"
-                        placeholder="Doe"
-                        value={formData.last_name}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
+        <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={control}
+                    name="first_name"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>First Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="John" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={control}
+                    name="last_name"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Last Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Doe" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        minLength={8}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="confirm_password">Confirm Password</Label>
-                    <Input
-                        id="confirm_password"
-                        name="confirm_password"
-                        type="password"
-                        value={formData.confirm_password}
-                        onChange={handleChange}
-                        required
-                        minLength={8}
-                    />
-                </div>
-            </div>
+            <FormField
+                control={control}
+                name="email"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                            <Input type="email" placeholder="name@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
 
-            <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="+1 (555) 123-4567"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                                <Input type="password" placeholder="********" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={control}
+                    name="confirm_password"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Confirm Password</FormLabel>
+                            <FormControl>
+                                <Input type="password" placeholder="********" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="dob">Date of Birth</Label>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !formData.dob && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {formData.dob ? formData.dob : <span>Pick a date</span>}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                            <input
-                                type="date"
-                                id="dob"
-                                name="dob"
-                                value={formData.dob}
-                                onChange={handleDateChange}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                required
+            <FormField
+                control={control}
+                name="phone"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                            <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={control}
+                    name="dob"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col pt-2">
+                            <FormLabel>Date of Birth</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value ? (
+                                                format(field.value, "PPP")
+                                            ) : (
+                                                <span>Pick a date</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <YearMonthPicker
+                                        onYearChange={handleYearChange}
+                                        onMonthChange={handleMonthChange}
+                                        defaultYear={calendarDisplayDate.getFullYear().toString()}
+                                        defaultMonth={(calendarDisplayDate.getMonth() + 1).toString().padStart(2, "0")}
+                                    />
+                                    <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={(date) => {
+                                            field.onChange(date);
+                                            if (date) setCalendarDisplayDate(date);
+                                        }}
+                                        month={calendarDisplayDate}
+                                        onMonthChange={setCalendarDisplayDate}
+                                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                                </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={control}
+                    name="gender"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Gender</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a gender" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="male">Male</SelectItem>
+                                    <SelectItem value="female">Female</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+
+            <FormField
+                control={control}
+                name="address"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                            <Textarea
+                                placeholder="123 Main St, Anytown, USA 12345"
+                                className="min-h-[80px]"
+                                {...field}
                             />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select
-                        onValueChange={(value) => handleSelectChange("gender", value)}
-                        defaultValue={formData.gender}
-                        required
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
 
-            <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                    id="address"
-                    name="address"
-                    placeholder="123 Main St, City, Country"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="min-h-[80px]"
-                    required
-                />
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select
-                    onValueChange={(value) => handleSelectChange("role", value)}
-                    defaultValue={formData.role}
-                    required
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="artist">Artist</SelectItem>
-                        <SelectItem value="artist_manager">Artist Manager</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create account"}
-            </Button>
-        </form>
+            <FormField
+                control={control}
+                name="role"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="artist">Artist</SelectItem>
+                                <SelectItem value="artist_manager">Artist Manager</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </>
     );
 }

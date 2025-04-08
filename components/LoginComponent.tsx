@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import Cookies from "js-cookie";
 import { useToast } from "@/hooks/use-toast";
 import LoginForm from "./LoginForm";
 import AuthCard from "./AuthCard";
@@ -22,21 +22,26 @@ export default function LoginComponent() {
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/login/", {
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+            const loginEndpoint = process.env.NEXT_PUBLIC_LOGIN_ENDPOINT;
+            const apiUrl = `${baseUrl}${loginEndpoint}`;
+
+            const response = await fetch(apiUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(formData), // Use the formData state
+                body: JSON.stringify(formData),
             });
 
             if (response.ok) {
                 const data = await response.json();
-                // Store the JWT token in local storage or a cookie
-                localStorage.setItem("Access", data.access);
-                localStorage.setItem("refresh", data.refresh);
-                localStorage.setItem("role", data.role); // Make sure this line is present
-                localStorage.setItem("name", data.name); // Store the user's name
+                // Store the JWT token and user data in cookies
+                Cookies.set("Access", data.access, { expires: 7 }); // Expires in 7 days
+                Cookies.set("refresh", data.refresh, { expires: 7 }); // Expires in 7 days
+                Cookies.set("role", data.role, { expires: 7 });
+                Cookies.set("name", data.name, { expires: 7 });
+
                 toast({
                     title: "Login successful",
                     description: "You are now logged in.",
@@ -46,7 +51,7 @@ export default function LoginComponent() {
                 const errorData = await response.json();
                 toast({
                     title: "Login failed",
-                    description: errorData.detail || "Invalid email or password.", // Use errorData.detail
+                    description: errorData.detail || "Invalid email or password.",
                     variant: "destructive",
                 });
             }
@@ -76,8 +81,8 @@ export default function LoginComponent() {
             <LoginForm
                 handleSubmit={handleSubmit}
                 isLoading={isLoading}
-                formData={formData} // Pass formData
-                handleChange={handleChange} // Pass handleChange
+                formData={formData}
+                handleChange={handleChange}
             />
         </AuthCard>
     );
