@@ -1,4 +1,4 @@
-"use client"; 
+"use client";
 
 import type * as React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
+import Cookies from "js-cookie";
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -30,9 +31,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const [userName, setUserName] = useState<string | null>(null);
 
     useEffect(() => {
-        // Only access localStorage after the component mounts
-        const storedRole = localStorage.getItem("role");
-        const storedName = localStorage.getItem("name");
+        // Only access cookies after the component mounts
+        const storedRole = Cookies.get("role");
+        const storedName = Cookies.get("name");
 
         if (storedRole) {
             setUserRole(storedRole);
@@ -96,7 +97,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>Billing</DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <LogoutButton /> {/* Use the LogoutButton here */}
+                                <LogoutButton />
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
