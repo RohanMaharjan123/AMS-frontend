@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import Cookies from "js-cookie";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner"; // Import toast from sonner
 import AuthCard from "./AuthCard";
 import SignupForm from "./SignupForm";
 
@@ -35,7 +35,6 @@ type SignupFormValues = z.infer<typeof formSchema>;
 
 export default function SignupComponent() {
     const router = useRouter();
-    const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [calendarDisplayDate, setCalendarDisplayDate] = useState<Date>(new Date());
 
@@ -72,7 +71,7 @@ export default function SignupComponent() {
 
             if (!baseUrl || !signupEndpoint) {
                 console.error("API URL or Signup Endpoint is not defined.");
-                toast({ title: "Configuration Error", description: "API endpoint missing.", variant: "destructive" });
+                toast.error("Configuration Error", { description: "API endpoint missing." }); // Use sonner
                 setIsLoading(false);
                 return;
             }
@@ -97,8 +96,7 @@ export default function SignupComponent() {
             });
 
             if (response.ok) {
-                toast({
-                    title: "Account created",
+                toast.success("Account created", { // Use sonner
                     description: "Please log in.",
                 });
                 router.push("/login"); // Redirect here after successful signup
@@ -131,18 +129,14 @@ export default function SignupComponent() {
                     errorMessage = `Signup failed with status: ${response.status} ${response.statusText}. Could not parse error details.`;
                 }
 
-                toast({
-                    title: "Signup failed",
+                toast.error("Signup failed", { // Use sonner
                     description: errorMessage,
-                    variant: "destructive",
                 });
             }
         } catch (error: any) {
             console.error("Signup Fetch/Network Error:", error);
-            toast({
-                title: "Network Error",
+            toast.error("Network Error", { // Use sonner
                 description: error.message || "Could not connect to the server.",
-                variant: "destructive",
             });
         } finally {
             setIsLoading(false);

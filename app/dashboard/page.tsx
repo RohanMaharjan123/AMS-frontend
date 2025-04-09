@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 "use client";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -8,7 +9,8 @@ import { ArrowUpRight, Calendar, DollarSign, Music2, PaintBucket, Users } from "
 import { ChevronDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Cookies from "js-cookie";
-// Sample data for the dashboard
+
+// Sample data (keep only what's needed if fetching dynamically)
 const stats = [
     {
         title: "Total Artists",
@@ -81,35 +83,16 @@ const recentArtists = [
         status: "Active",
         Album: 4,
     },
+    // Add more artists if needed or fetch dynamically
 ];
 
-const upcomingEvents = [
-    {
-        id: 1,
-        title: "Gallery Opening",
-        date: "Mar 24, 2025",
-        artists: 8,
-    },
-    {
-        id: 2,
-        title: "Art Workshop",
-        date: "Mar 28, 2025",
-        artists: 3,
-    },
-    {
-        id: 3,
-        title: "Exhibition Planning",
-        date: "Apr 2, 2025",
-        artists: 12,
-    },
-];
+// Removed upcomingEvents data as the component is removed
 
 export default function DashboardPage() {
     const [userRole, setUserRole] = useState<string | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
 
     useEffect(() => {
-        // Only access localStorage after the component mounts
         const storedRole = Cookies.get("role");
         const storedName = Cookies.get("name");
 
@@ -125,9 +108,7 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-1 flex-col gap-6 p-6">
             <div className="flex flex-col gap-2">
-                {/* Display the user's name here */}
                 {userName && <h1 className="text-2xl font-bold tracking-tight">Welcome back, {userName}</h1>}
-                {/* Display the role here */}
                 {userRole && <p className="text-muted-foreground">
                     You are logged in as a {userRole}.
                 </p>}
@@ -157,9 +138,8 @@ export default function DashboardPage() {
                 ))}
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                {/* Recent Artists */}
-                <Card className="lg:col-span-4">
+            <div className="grid gap-6">
+                <Card className="col-span-full">
                     <CardHeader className="flex flex-row items-center">
                         <div>
                             <CardTitle>Recent Artists</CardTitle>
@@ -211,97 +191,12 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* Upcoming Events */}
-                <Card className="lg:col-span-3">
-                    <CardHeader>
-                        <CardTitle>Upcoming Events</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {upcomingEvents.map((event) => (
-                                <div key={event.id} className="flex items-center gap-4">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                                        <Calendar className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-sm font-medium">{event.title}</p>
-                                        <div className="flex items-center text-xs text-muted-foreground">
-                                            <span>{event.date}</span>
-                                            <Separator orientation="vertical" className="mx-2 h-3" />
-                                            <Users className="mr-1 h-3 w-3" />
-                                            <span>{event.artists} artists</span>
-                                        </div>
-                                    </div>
-                                    <Button variant="outline" size="sm">
-                                        View
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Upcoming Events Card - REMOVED */}
+
             </div>
 
-            {/* Recent Album */}
-            <Card>
-                <CardHeader className="flex flex-row items-center">
-                    <div>
-                        <CardTitle>Recent Album</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                            Overview of your latest artist Album
-                        </p>
-                    </div>
-                    <Button variant="outline" size="sm" className="ml-auto gap-1">
-                        <span>View All</span>
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid gap-4 md:grid-cols-3">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="rounded-lg border p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                                        <Music2 className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium">Project {i}</h3>
-                                        <p className="text-xs text-muted-foreground">
-                                            {i === 1
-                                                ? "In Progress"
-                                                : i === 2
-                                                    ? "Planning"
-                                                    : "Completed"}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="mt-3 text-sm">
-                                    <p className="line-clamp-2">
-                                        {i === 1
-                                            ? "Album recording with 4 artists, scheduled for completion next month."
-                                            : i === 2
-                                                ? "New exhibition planning for summer showcase featuring 8 artists."
-                                                : "Collaborative art installation completed with 6 artists."}
-                                    </p>
-                                </div>
-                                <div className="mt-3 flex justify-between">
-                                    <div className="flex -space-x-2">
-                                        {[1, 2, 3].map((j) => (
-                                            <Avatar key={`${i}-${j}`} className="border-2 border-background h-6 w-6">
-                                                <AvatarImage src={`/placeholder.svg?height=24&width=24`} />
-                                                <AvatarFallback>A{j}</AvatarFallback>
-                                            </Avatar>
-                                        ))}
-                                    </div>
-                                    <Button variant="ghost" size="sm">
-                                        Details
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Recent Album Card - REMOVED */}
+
         </div>
     );
 }

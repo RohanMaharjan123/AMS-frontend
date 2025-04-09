@@ -4,13 +4,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner"; // Import toast from sonner
 import LoginForm from "./LoginForm";
 import AuthCard from "./AuthCard";
 
 export default function LoginComponent() {
     const router = useRouter();
-    const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         email: "",
@@ -42,25 +41,20 @@ export default function LoginComponent() {
                 Cookies.set("role", data.role, { expires: 7 });
                 Cookies.set("name", data.name, { expires: 7 });
 
-                toast({
-                    title: "Login successful",
+                toast.success("Login successful", { // Use sonner's toast.success
                     description: "You are now logged in.",
                 });
                 router.push("/dashboard");
             } else {
                 const errorData = await response.json();
-                toast({
-                    title: "Login failed",
+                toast.error("Login failed", { // Use sonner's toast.error
                     description: errorData.detail || "Invalid email or password.",
-                    variant: "destructive",
                 });
             }
         } catch (error: any) {
             console.error("Login error:", error);
-            toast({
-                title: "An error occurred",
+            toast.error("An error occurred", { // Use sonner's toast.error
                 description: error.message || "There was an error logging you in.",
-                variant: "destructive",
             });
         } finally {
             setIsLoading(false);
