@@ -1,3 +1,4 @@
+// app/dashboard/layout.tsx
 "use client";
 
 import type * as React from "react";
@@ -25,6 +26,25 @@ import Cookies from "js-cookie";
 interface DashboardLayoutProps {
     children: React.ReactNode;
 }
+
+// Helper function to get initials
+const getInitials = (name: string | null): string => {
+    if (!name) return "U"; // Default fallback if name is not available
+
+    const nameParts = name.trim().split(" ");
+    if (nameParts.length === 1 && nameParts[0].length > 0) {
+        // Handle single names (e.g., "Admin")
+        return nameParts[0].charAt(0).toUpperCase();
+    }
+    if (nameParts.length > 1) {
+        // Get first letter of the first name and first letter of the last name
+        const firstInitial = nameParts[0].charAt(0);
+        const lastInitial = nameParts[nameParts.length - 1].charAt(0);
+        return `${firstInitial}${lastInitial}`.toUpperCase();
+    }
+    return "U"; // Fallback for empty string or unexpected cases
+};
+
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const [userRole, setUserRole] = useState<string | null>(null);
@@ -74,8 +94,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="flex items-center gap-2">
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                                        <AvatarFallback>JD</AvatarFallback>
+                                        {/* Update alt attribute */}
+                                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt={userName || "User"} />
+                                        {/* Use the helper function */}
+                                        <AvatarFallback>{getInitials(userName)}</AvatarFallback>
                                     </Avatar>
                                     <div className="hidden md:inline-flex flex-col items-start">
                                         {/* Display the user's name here */}
