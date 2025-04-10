@@ -1,93 +1,91 @@
 // components/app-sidebar.tsx
 "use client";
+
+import {
+    Home,
+    Users,
+    UsersRound,
+    UserCog,
+    ShieldCheck,
+    Music2,
+    Calendar,
+    Image,
+    ChevronDown,
+    ChevronRight,
+    Music
+} from "lucide-react";
+import type React from "react";
 import { useState, useEffect } from "react";
-import type * as React from "react";
-import { Calendar, Home, Image, Music, Users, ChevronDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from 'next/navigation';
 import Cookies from "js-cookie";
+import { getJson } from "@/lib/apiClient";
 import {
     Sidebar,
+    SidebarHeader,
     SidebarContent,
     SidebarGroup,
-    SidebarHeader,
+    SidebarGroupLabel, // Still imported, but not used in the removed section
     SidebarMenu,
-    SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuButton,
     SidebarMenuSub,
-    SidebarMenuSubButton,
     SidebarMenuSubItem,
+    SidebarMenuSubButton,
+    SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner"; // Import toast
+
 type UserRole = 'artist' | 'artist_manager' | 'super_admin';
 
-interface NavItem {
+export interface NavSubItem {
+    title: string;
+    url: string;
+    icon?: React.ElementType;
+    roles?: UserRole[];
+}
+export interface NavItem {
     title: string;
     icon: React.ElementType;
-    url?: string; 
-    roles?: UserRole[]; 
+    url?: string;
+    roles?: UserRole[];
     items?: NavSubItem[];
 }
 
-interface NavSubItem {
-    title: string;
-    url: string;
-    roles?: UserRole[]; // Roles for sub-items
-}
-
-const navigation: NavItem[] = [
+export const navigation: NavItem[] = [
     {
         title: "Dashboard",
         icon: Home,
         url: "/dashboard",
-        roles: ['artist', 'artist_manager', 'super_admin'], // Visible to both
+        roles: ['artist', 'artist_manager', 'super_admin'],
     },
     {
-        title: "Artists", // Manager Section
+        title: "Artists",
         icon: Users,
-        roles: ['artist_manager'], // Only visible to managers
+        roles: ['artist_manager'],
         items: [
-            {
-                title: "All Artists",
-                url: "/dashboard/artists",
-                // roles: ['artist_manager'] // Inherits role from parent if not specified
-            },
-            {
-                title: "New Artist",
-                url: "/dashboard/artists/new",
-            },
-            {
-                title: "Categories",
-                url: "/dashboard/artists/categories",
-            },
+            { title: "All Artists", url: "/dashboard/artists" },
+            { title: "New Artist", url: "/dashboard/artists/new" },
+            { title: "Categories", url: "/dashboard/artists/categories" },
         ],
     },
     {
-        title: "My Music", // Artist Section
-        icon: Music,
-        roles: ['artist'], // Only visible to artists
+        title: "Album Management",
+        icon: Music2,
+        roles: ['artist_manager'],
         items: [
-            {
-                title: "My Albums",
-                url: "/dashboard/albums", // Artist sees their albums
-            },
-            {
-                title: "Upload New",
-                url: "/dashboard/albums/new", // Artist uploads new
-            },
+            { title: "Albums", url: "/dashboard/albums" },
+            { title: "Manage Releases", url: "/dashboard/releases" },
         ],
     },
     {
-        title: "Album Management", // Manager Section for Albums
-        icon: Music, // Can use the same icon
-        roles: ['artist_manager'], // Only visible to managers
+        title: "My Music",
+        icon: Music2,
+        roles: ['artist'],
         items: [
-            {
-                title: "All Albums", // Manager sees all albums
-                url: "/dashboard/albums", // Could point to a different view if needed
-            },
-            {
-                title: "Manage Releases", // Example manager-specific sub-item
-                url: "/dashboard/releases", // Example different URL for managers
-            },
+            { title: "Albums", url: "/dashboard/albums" },
+            { title: "Upload New", url: "/dashboard/albums/new" },
         ],
     },
     {
@@ -102,91 +100,217 @@ const navigation: NavItem[] = [
         url: "/dashboard/calendar",
         roles: ['artist', 'artist_manager'],
     },
+    // --- Super Admin Specific ---
+    {
+        title: "User Management",
+        icon: UsersRound,
+        roles: ['super_admin'],
+        items: [
+            {
+                title: "All Users",
+                url: "/dashboard/users",
+                icon: Users,
+                roles: ['super_admin'],
+            },
+            {
+                title: "Artists",
+                url: "/dashboard/users/artists", // Ensure this page exists
+                icon: UserCog,
+                roles: ['super_admin'],
+            },
+            {
+                title: "Managers",
+                url: "/dashboard/users/managers", // Ensure this page exists
+                icon: ShieldCheck,
+                roles: ['super_admin'],
+            },
+        ],
+    },
 ];
+// --- End Navigation Definition ---
 
+// Interface for the user data from /api/users/
+interface ApiUser {
+    id: string | number;
+    email: string;
+    is_staff: boolean;
+    is_active: boolean;
+    date_joined: string;
+    role: 'artist' | 'artist_manager'; // Add 'super_admin' if applicable from API
+    first_name?: string;
+    last_name?: string;
+}
+
+interface UserCounts {
+    total_users: number;
+    total_artists: number;
+    total_managers: number;
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const pathname = usePathname(); // Get current path
     const [openSubMenus, setOpenSubMenus] = useState<{ [key: string]: boolean }>({});
-    const [userRole, setUserRole] = useState<UserRole | null>(null); // State for the user's role
-    const [isLoading, setIsLoading] = useState(true); // Loading state
+    const [userRole, setUserRole] = useState<UserRole | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [userCounts, setUserCounts] = useState<UserCounts | null>(null);
+    const [countsLoading, setCountsLoading] = useState<boolean>(false);
+    const [countsError, setCountsError] = useState<string | null>(null);
 
     useEffect(() => {
         const storedRole = Cookies.get("role") as UserRole | undefined;
-        if (storedRole && ['artist', 'artist_manager', 'super_admin'].includes(storedRole)) { // Validate role
+        if (storedRole && ['artist', 'artist_manager', 'super_admin'].includes(storedRole)) {
             setUserRole(storedRole);
         } else {
-            // Handle missing or invalid role (e.g., redirect to login)
-            console.warn("User role not found or invalid in cookies.");
+            console.warn("Sidebar: User role not found or invalid in cookies.");
         }
         setIsLoading(false);
     }, []);
 
+    // to fetch user counts for super_admin
+    useEffect(() => {
+        const fetchUserCounts = async () => {
+            setCountsLoading(true);
+            setCountsError(null);
+            setUserCounts(null); // Reset counts before fetching
+            try {
+                // Fetch the user list and calculate counts
+                console.log("Sidebar: Fetching user list for counts...");
+                // !! IMPORTANT: Replace '/api/users/' with your actual endpoint to fetch all users !!
+                const usersData = await getJson<ApiUser[]>('/api/users/');
+
+                // Calculate counts from the fetched user list
+                const calculatedCounts: UserCounts = {
+                    total_users: 0,
+                    total_artists: 0,
+                    total_managers: 0,
+                };
+                if (usersData && usersData.length > 0) {
+                    calculatedCounts.total_users = usersData.length;
+                    calculatedCounts.total_artists = usersData.filter(u => u.role === 'artist').length;
+                    calculatedCounts.total_managers = usersData.filter(u => u.role === 'artist_manager').length;
+                }
+                console.log("Sidebar: Calculated Counts:", calculatedCounts);
+                setUserCounts(calculatedCounts); // Set the calculated counts
+
+            } catch (error: any) {
+                console.error("Sidebar: Failed to fetch user counts:", error);
+                if (error.message !== 'Unauthorized') {
+                    setCountsError("Could not load counts.");
+                    toast.error("Error", { description: "Failed to load user counts for sidebar." }); // Add toast
+                }
+                setUserCounts(null); // Ensure counts are null on error
+            } finally {
+                setCountsLoading(false);
+            }
+        };
+
+        if (userRole === 'super_admin') {
+            fetchUserCounts();
+        } else {
+            // Reset states if not super_admin
+            setUserCounts(null);
+            setCountsError(null);
+            setCountsLoading(false);
+        }
+    }, [userRole]); // Dependency array includes userRole
+
+    useEffect(() => {
+        if (!isLoading && userRole) {
+            const activeParent = navigation.find(item =>
+                item.items?.some(subItem => pathname.startsWith(subItem.url))
+            );
+            if (activeParent && !openSubMenus[activeParent.title]) {
+                setOpenSubMenus(prev => ({ ...prev, [activeParent.title]: true }));
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoading, userRole, pathname]); // Keep openSubMenus out to avoid loop
+
+
     const toggleSubMenu = (title: string) => {
-        setOpenSubMenus((prev) => ({
-            ...prev,
-            [title]: !prev[title],
-        }));
+        setOpenSubMenus((prev) => ({ ...prev, [title]: !prev[title] }));
     };
 
-    // Filter navigation based on userRole BEFORE rendering
+    // Filter navigation based on user role
     const filteredNavigation = navigation.map(item => {
         const isItemVisible = !item.roles || (userRole && item.roles.includes(userRole));
         if (!isItemVisible) {
-            return null; 
+            return null;
         }
 
         let visibleSubItems: NavSubItem[] = [];
         if (item.items) {
-            visibleSubItems = item.items.filter(subItem => {
-                return !subItem.roles || (userRole && subItem.roles.includes(userRole));
-            });
-        }
-
-        if (visibleSubItems.length > 0) {
-            return { ...item, items: visibleSubItems };
-        }
-        if (!item.items || visibleSubItems.length === 0) {
-            if (item.url) {
-                return { ...item, items: undefined }; 
-            } else {
-                return null; 
+            visibleSubItems = item.items.filter(subItem =>
+                !subItem.roles || (userRole && subItem.roles.includes(userRole))
+            );
+            // If the parent item itself has a URL and no visible subitems, show the parent
+            if (visibleSubItems.length === 0 && item.url && isItemVisible) {
+                return { ...item, items: undefined };
+            }
+            // If there are visible subitems, include them
+            if (visibleSubItems.length > 0) {
+                return { ...item, items: visibleSubItems };
+            }
+            // If no visible subitems and no parent URL, hide the parent
+            if (visibleSubItems.length === 0 && !item.url) {
+                return null;
             }
         }
+        // If it's a top-level item with a URL and no subitems
+        if (!item.items && item.url) {
+            return item;
+        }
+        // If it had subitems but none are visible and no parent URL, hide
+        if (item.items && visibleSubItems.length === 0 && !item.url) {
+             return null;
+        }
+        // Fallback, should ideally not be reached often with above logic
+        return item;
+    }).filter(item => item !== null) as NavItem[];
 
-        return null;
 
-    }).filter(item => item !== null) as NavItem[]; 
-
+    // --- Loading Skeleton ---
     if (isLoading) {
         return (
             <Sidebar variant="floating" {...props}>
                 <SidebarHeader>
-                    {/* Basic Header */}
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton size="lg" disabled>
-                                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted"></div>
+                                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted">
+                                    <Skeleton className="h-4 w-4" />
+                                </div>
                                 <div className="flex flex-col gap-0.5 leading-none">
-                                    <span className="font-semibold">Loading...</span>
+                                    <Skeleton className="h-4 w-20" />
+                                    <Skeleton className="h-3 w-16" />
                                 </div>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarHeader>
                 <SidebarContent>
+                    <SidebarGroup>
+                        <SidebarMenu className="gap-1">
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                        </SidebarMenu>
+                    </SidebarGroup>
                 </SidebarContent>
             </Sidebar>
         );
     }
+    // --- End Loading Skeleton ---
 
     return (
         <Sidebar variant="floating" {...props}>
+            {/* --- Header --- */}
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
                             <Link href="/dashboard">
-                                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"> {/* Changed bg color */}
                                     <Music className="size-4" />
                                 </div>
                                 <div className="flex flex-col gap-0.5 leading-none">
@@ -198,52 +322,96 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
+            {/* --- End Header --- */}
+
+            {/* --- Main Navigation --- */}
             <SidebarContent>
                 <SidebarGroup>
                     <SidebarMenu className="gap-1">
-                        {/* Map over the FILTERED navigation */}
-                        {filteredNavigation.map((item) => (
-                            <SidebarMenuItem key={item.title}>
-                                {item.items && item.items.length > 0 ? (
-                                    <>
-                                        <SidebarMenuButton
-                                            className="flex justify-between items-center"
-                                            onClick={() => toggleSubMenu(item.title)}
-                                        >
-                                            <div className="flex items-center">
-                                                <item.icon className="mr-2 h-4 w-4" />
-                                                {item.title}
-                                            </div>
-                                            {openSubMenus[item.title] ? (
-                                                <ChevronDown className="h-4 w-4" />
-                                            ) : (
-                                                <ChevronRight className="h-4 w-4" />
+                        {filteredNavigation.map((item) => {
+                            const hasVisibleSubItems = item.items && item.items.length > 0;
+                            const isActive = item.url === pathname ||
+                                (hasVisibleSubItems && item.items.some(sub => pathname.startsWith(sub.url)));
+
+                            return (
+                                <SidebarMenuItem key={item.title}>
+                                    {hasVisibleSubItems ? (
+                                        <>
+                                            <SidebarMenuButton
+                                                isActive={isActive && !openSubMenus[item.title]}
+                                                onClick={() => toggleSubMenu(item.title)}
+                                                className="justify-between"
+                                            >
+                                                <span className="flex items-center gap-2"> {/* Wrap icon and title */}
+                                                    <item.icon />
+                                                    {item.title}
+                                                </span>
+                                                {openSubMenus[item.title] ? <ChevronDown /> : <ChevronRight />}
+                                            </SidebarMenuButton>
+                                            {/* Collapsible Content for Submenu */}
+                                            {openSubMenus[item.title] && (
+                                                <SidebarMenuSub>
+                                                    {item.items.map((subItem) => {
+                                                        const isSubActive = pathname.startsWith(subItem.url);
+                                                        return (
+                                                            <SidebarMenuSubItem key={subItem.title}>
+                                                                <Link href={subItem.url} passHref legacyBehavior>
+                                                                    <SidebarMenuSubButton isActive={isSubActive}>
+                                                                        {subItem.title}
+                                                                    </SidebarMenuSubButton>
+                                                                </Link>
+                                                            </SidebarMenuSubItem>
+                                                        );
+                                                    })}
+                                                </SidebarMenuSub>
                                             )}
+                                        </>
+                                    ) : item.url ? (
+                                        <SidebarMenuButton isActive={isActive} asChild>
+                                            <Link href={item.url}>
+                                                <item.icon />
+                                                {item.title}
+                                            </Link>
                                         </SidebarMenuButton>
-                                        {openSubMenus[item.title] && (
-                                            <SidebarMenuSub className="ml-0 border-l-0 px-1.5">
-                                                {item.items.map((subItem) => (
-                                                    <SidebarMenuSubItem key={subItem.title}>
-                                                        <Link href={subItem.url} passHref>
-                                                            <SidebarMenuSubButton>{subItem.title}</SidebarMenuSubButton>
-                                                        </Link>
-                                                    </SidebarMenuSubItem>
-                                                ))}
-                                            </SidebarMenuSub>
-                                        )}
-                                    </>
-                                ) : ( 
-                                    <SidebarMenuButton asChild>
-                                        <Link href={item.url!} className="font-medium">
-                                            <item.icon className="mr-2 h-4 w-4" />
-                                            {item.title}
-                                        </Link>
-                                    </SidebarMenuButton>
-                                )}
-                            </SidebarMenuItem>
-                        ))}
+                                    ) : null
+                                    }
+                                </SidebarMenuItem>
+                            );
+                        })}
                     </SidebarMenu>
                 </SidebarGroup>
+                {/* --- End Main Navigation --- */}
+
+                {/* --- Admin Stats Section (Conditional) --- */}
+                {userRole === 'super_admin' && (
+                    <>
+                        <SidebarSeparator />
+                        <SidebarGroup>
+                            {/* <<< The SidebarGroupLabel was removed from here >>> */}
+                            <SidebarMenu className="gap-0.5 pt-2"> {/* Added padding-top to compensate for label removal */}
+                                {countsLoading ? (
+                                    <>
+                                        <Skeleton className="mx-2 h-5 w-3/4" />
+                                        <Skeleton className="mx-2 h-5 w-2/3" />
+                                        <Skeleton className="mx-2 h-5 w-3/5" />
+                                    </>
+                                ) : countsError ? (
+                                    <SidebarMenuItem>
+                                        <span className="px-2 text-xs text-destructive">{countsError}</span>
+                                    </SidebarMenuItem>
+                                ) : userCounts ? (
+                                    // User counts display was previously removed
+                                    <></>
+                                ) : (
+                                    <SidebarMenuItem>
+                                        <span className="px-2 text-xs text-muted-foreground">No counts available.</span>
+                                    </SidebarMenuItem>
+                                )}
+                            </SidebarMenu>
+                        </SidebarGroup>
+                    </>
+                )}
+                {/* --- End Admin Stats Section --- */}
             </SidebarContent>
         </Sidebar>
     );

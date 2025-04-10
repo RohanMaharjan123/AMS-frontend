@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-// Sample Data (Replace with API Fetching)
+// Sample Data (Replace with API Fetching)x
 interface Category {
   id: number;
   name: string;
